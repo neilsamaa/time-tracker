@@ -26,3 +26,30 @@ Here’s how you can get started:
 - Open a discussion or issue first if you're unsure
 
 Thanks for being part of the project ❤️
+
+
+---
+
+### ✨ `CODE_OF_CONDUCT.md`
+
+```markdown
+# Contributor Code of Conduct
+
+We are committed to providing a welcoming and respectful environment for all contributors.
+
+## Expected Behavior
+
+- Be respectful and inclusive
+- Use welcoming and inclusive language
+- Accept constructive criticism gracefully
+
+## Unacceptable Behavior
+
+We do not tolerate:
+
+- Harassment or discrimination
+- Offensive, rude, or dismissive comments
+
+Violations may be reported to the project maintainers.
+
+Thank you for helping us build a positive and respectful community! 🤝
