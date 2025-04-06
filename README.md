@@ -4,7 +4,7 @@
 
 ## ✨ Features
 
-- ⏳ Time Tracking: Start, and stop your activities.
+- ⏳ Time Tracking: Start, pause, and stop your activities.
 - 📁 Project Management: Add and select projects for each time entry.
 - 🏷️ Tag Management: Assign tags for easier task categorization.
 - 💾 Data is automatically saved to your browser using `localStorage`.
@@ -12,7 +12,6 @@
 ## 🔍 Preview
 
 > [(Demo Here)](https://github.com/neilsamaa/time-tracker.git)
-
 
 ![image](https://github.com/user-attachments/assets/2ee94be6-012e-4ca0-9daf-c7ad61ed6fa7)
 
@@ -28,4 +27,20 @@
 
 2. Open index.html
 
-3. Ready to Use
+3. Ready to Use, No installation or dependencies required. It’s just one file.
+
+## 💡 MVP Goals
+
+- ✅Time tracking (start, pause, stop)
+- ✅Project selector
+- ✅Tagging
+- ✅Save data to localStorage
+
+## 🛠 Contributing
+We welcome all contributions, including:
+
+- New feature ideas
+- Refactoring or bug fixes
+- Improvements to documentation
+
+Check out the [CONTRIBUTING.md](https://github.com/neilsamaa/time-tracker.git) guide to get started.
