@@ -11,7 +11,7 @@
 
 ## 🔍 Preview
 
-> [(Demo Here)](https://github.com/neilsamaa/time-tracker.git)
+> [(Demo Here)](https://neilsamaa.github.io/timetracker/)
 
 ![image](https://github.com/user-attachments/assets/2ee94be6-012e-4ca0-9daf-c7ad61ed6fa7)
 
