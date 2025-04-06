@@ -1,0 +1,1160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TimeTrack - Time Tracking App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .timer-circle {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .timer-circle::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            padding: 10px;
+            background: linear-gradient(45deg, #4f46e5, #10b981);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+        .project-item:hover .project-actions {
+            opacity: 1;
+        }
+        .sidebar-item:hover {
+            background-color: rgba(79, 70, 229, 0.1);
+        }
+        .sidebar-item.active {
+            background-color: rgba(79, 70, 229, 0.1);
+            border-left: 3px solid #4f46e5;
+        }
+        .modal {
+            transition: opacity 0.3s ease;
+        }
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            border-radius: 9999px;
+            margin-right: 0.25rem;
+            margin-bottom: 0.25rem;
+        }
+        .tag-input-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            min-height: 2.5rem;
+            padding: 0.25rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+        }
+        .tag-input {
+            flex: 1;
+            min-width: 5rem;
+            border: none;
+            outline: none;
+            padding: 0.5rem;
+        }
+        .tag-remove {
+            margin-left: 0.25rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 modal opacity-0 pointer-events-none">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Confirm Deletion</h3>
+                <button onclick="closeDeleteModal()" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p id="delete-modal-message" class="text-gray-600 mb-6">Are you sure you want to delete this item? This action cannot be undone.</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDeleteModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    Cancel
+                </button>
+                <button onclick="confirmDelete()" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Modal -->
+    <div id="project-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 modal opacity-0 pointer-events-none">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div class="flex items-center justify-between mb-4">
+                <h3 id="project-modal-title" class="text-lg font-medium text-gray-900">Add Project</h3>
+                <button onclick="closeProjectModal()" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-4">
+                <label for="project-name" class="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+                <input type="text" id="project-name" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Project name">
+            </div>
+            <div class="mb-4">
+                <label for="project-color" class="block text-sm font-medium text-gray-700 mb-1">Color</label>
+                <select id="project-color" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                    <option value="bg-green-500">Green</option>
+                    <option value="bg-blue-500">Blue</option>
+                    <option value="bg-purple-500">Purple</option>
+                    <option value="bg-red-500">Red</option>
+                    <option value="bg-yellow-500">Yellow</option>
+                    <option value="bg-pink-500">Pink</option>
+                    <option value="bg-indigo-500">Indigo</option>
+                </select>
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeProjectModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    Cancel
+                </button>
+                <button onclick="saveProject()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    Save
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Time Entry Modal -->
+    <div id="edit-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 modal opacity-0 pointer-events-none">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-gray-900">Edit Time Entry</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="mb-4">
+                <label for="edit-project" class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                <select id="edit-project" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                    <option value="">Select project</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="edit-description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <input type="text" id="edit-description" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="What were you working on?">
+            </div>
+            <div class="mb-4">
+                <label for="edit-tags" class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                <div id="edit-tags-container" class="tag-input-container">
+                    <input type="text" id="edit-tags-input" class="tag-input" placeholder="Add tags...">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="edit-duration" class="block text-sm font-medium text-gray-700 mb-1">Duration</label>
+                <input type="text" id="edit-duration" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="HH:MM">
+            </div>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeEditModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    Cancel
+                </button>
+                <button onclick="saveEditedEntry()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <div class="hidden md:flex md:flex-shrink-0">
+            <div class="flex flex-col w-64 bg-white border-r border-gray-200">
+                <div class="flex items-center justify-center h-16 px-4 border-b border-gray-200">
+                    <div class="flex items-center">
+                        <i class="fas fa-clock text-indigo-600 text-2xl mr-2"></i>
+                        <span class="text-xl font-bold text-gray-800">TimeTrack</span>
+                    </div>
+                </div>
+                <div class="flex flex-col flex-grow px-4 py-4 overflow-y-auto">
+                    <div class="space-y-1">
+                        <a href="#" onclick="showSection('tracker')" id="tracker-link" class="sidebar-item active flex items-center px-2 py-3 text-sm font-medium text-gray-900 rounded-md">
+                            <i class="fas fa-stopwatch mr-3 text-indigo-600"></i>
+                            Time Tracker
+                        </a>
+                        <a href="#" onclick="showSection('reports')" id="reports-link" class="sidebar-item flex items-center px-2 py-3 text-sm font-medium text-gray-600 rounded-md hover:text-gray-900">
+                            <i class="fas fa-chart-bar mr-3 text-gray-500"></i>
+                            Reports
+                        </a>
+                        <a href="#" onclick="showSection('projects')" id="projects-link" class="sidebar-item flex items-center px-2 py-3 text-sm font-medium text-gray-600 rounded-md hover:text-gray-900">
+                            <i class="fas fa-project-diagram mr-3 text-gray-500"></i>
+                            Projects
+                        </a>
+                        <a href="#" onclick="showSection('tags')" id="tags-link" class="sidebar-item flex items-center px-2 py-3 text-sm font-medium text-gray-600 rounded-md hover:text-gray-900">
+                            <i class="fas fa-tags mr-3 text-gray-500"></i>
+                            Tags
+                        </a>
+                    </div>
+                    
+                    <div class="mt-8">
+                        <div class="flex items-center justify-between px-3">
+                            <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Recent Projects
+                            </h3>
+                            <button onclick="openProjectModal()" class="text-xs text-indigo-600 hover:text-indigo-800">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                        <div id="recent-projects" class="mt-2 space-y-1">
+                            <!-- Projects will be dynamically inserted here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="p-4 border-t border-gray-200">
+                    <div class="flex items-center">
+                        <img class="w-8 h-8 rounded-full" src="https://randomuser.me/api/portraits/women/44.jpg" alt="User avatar">
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-700">Sarah Johnson</p>
+                            <p class="text-xs font-medium text-gray-500">sarah@example.com</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main content -->
+        <div class="flex flex-col flex-1 overflow-hidden">
+            <!-- Top navigation -->
+            <div class="flex items-center justify-between h-16 px-4 bg-white border-b border-gray-200">
+                <div class="flex items-center md:hidden">
+                    <button class="text-gray-500 focus:outline-none">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                </div>
+                
+                <div class="flex-1 max-w-md ml-4 md:ml-6">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                            <i class="fas fa-search text-gray-400"></i>
+                        </div>
+                        <input type="text" id="search-input" class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Search...">
+                    </div>
+                </div>
+                
+                <div class="flex items-center ml-4 md:ml-6">
+                    <button class="p-1 text-gray-400 rounded-full hover:text-gray-500 focus:outline-none">
+                        <i class="fas fa-bell"></i>
+                    </button>
+                    <button class="p-1 ml-3 text-gray-400 rounded-full hover:text-gray-500 focus:outline-none">
+                        <i class="fas fa-question-circle"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Main content area -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-6">
+                <div class="max-w-7xl mx-auto">
+                    <!-- Time Tracker Section -->
+                    <div id="tracker-section">
+                        <div class="flex flex-col md:flex-row gap-6">
+                            <!-- Timer section -->
+                            <div class="w-full md:w-1/2 lg:w-2/5">
+                                <div class="bg-white rounded-lg shadow p-6">
+                                    <h2 class="text-lg font-medium text-gray-900 mb-4">Track Time</h2>
+                                    
+                                    <div class="flex justify-center my-6">
+                                        <div class="timer-circle">
+                                            <div class="text-center">
+                                                <div id="timer-display" class="text-5xl font-bold text-gray-800">00:00:00</div>
+                                                <div id="today-total" class="text-gray-500 mt-2">Today: 0h 00m</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-8">
+                                        <div class="mb-4">
+                                            <label for="project" class="block text-sm font-medium text-gray-700 mb-1">Project</label>
+                                            <select id="project" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                                <option value="" selected>Select project</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div class="mb-4">
+                                            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                            <input type="text" id="description" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="What are you working on?">
+                                        </div>
+                                        
+                                        <div class="mb-4">
+                                            <label for="tags" class="block text-sm font-medium text-gray-700 mb-1">Tags</label>
+                                            <div id="tags-container" class="tag-input-container">
+                                                <input type="text" id="tags-input" class="tag-input" placeholder="Add tags...">
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="flex space-x-3">
+                                            <button id="start-timer" class="flex-1 bg-indigo-600 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                                <i class="fas fa-play mr-2"></i> Start
+                                            </button>
+                                            <button id="stop-timer" class="flex-1 bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" disabled>
+                                                <i class="fas fa-stop mr-2"></i> Stop
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Recent time entries -->
+                            <div class="w-full md:w-1/2 lg:w-3/5">
+                                <div class="bg-white rounded-lg shadow overflow-hidden">
+                                    <div class="px-6 py-4 border-b border-gray-200">
+                                        <div class="flex items-center justify-between">
+                                            <h2 class="text-lg font-medium text-gray-900">Today's Time Entries</h2>
+                                            <button class="text-sm text-indigo-600 hover:text-indigo-800">View All</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="time-entries-list" class="divide-y divide-gray-200">
+                                        <!-- Time entries will be dynamically inserted here -->
+                                    </div>
+                                    
+                                    <div class="bg-gray-50 px-6 py-4">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-sm font-medium text-gray-500">Total today</span>
+                                            <span id="today-total-summary" class="text-sm font-bold text-gray-900">0h 00m</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Weekly summary -->
+                                <div class="bg-white rounded-lg shadow mt-6 p-6">
+                                    <h2 class="text-lg font-medium text-gray-900 mb-4">Weekly Summary</h2>
+                                    <div class="flex items-end h-40">
+                                        <div class="flex-1 flex flex-col items-center">
+                                            <div class="w-full flex justify-center">
+                                                <div class="w-8 bg-indigo-100 rounded-t-sm" style="height: 20%;"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-500 mt-1">Mon</span>
+                                        </div>
+                                        <div class="flex-1 flex flex-col items-center">
+                                            <div class="w-full flex justify-center">
+                                                <div class="w-8 bg-indigo-100 rounded-t-sm" style="height: 40%;"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-500 mt-1">Tue</span>
+                                        </div>
+                                        <div class="flex-1 flex flex-col items-center">
+                                            <div class="w-full flex justify-center">
+                                                <div class="w-8 bg-indigo-100 rounded-t-sm" style="height: 60%;"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-500 mt-1">Wed</span>
+                                        </div>
+                                        <div class="flex-1 flex flex-col items-center">
+                                            <div class="w-full flex justify-center">
+                                                <div class="w-8 bg-indigo-100 rounded-t-sm" style="height: 80%;"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-500 mt-1">Thu</span>
+                                        </div>
+                                        <div class="flex-1 flex flex-col items-center">
+                                            <div class="w-full flex justify-center">
+                                                <div class="w-8 bg-indigo-600 rounded-t-sm" style="height: 100%;"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-500 mt-1">Fri</span>
+                                        </div>
+                                        <div class="flex-1 flex flex-col items-center">
+                                            <div class="w-full flex justify-center">
+                                                <div class="w-8 bg-indigo-100 rounded-t-sm" style="height: 30%;"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-500 mt-1">Sat</span>
+                                        </div>
+                                        <div class="flex-1 flex flex-col items-center">
+                                            <div class="w-full flex justify-center">
+                                                <div class="w-8 bg-indigo-100 rounded-t-sm" style="height: 10%;"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-500 mt-1">Sun</span>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 flex justify-between items-center">
+                                        <div>
+                                            <span class="text-sm text-gray-500">This week:</span>
+                                            <span class="ml-2 text-sm font-bold text-gray-900">18h 22m</span>
+                                        </div>
+                                        <button class="text-sm text-indigo-600 hover:text-indigo-800">View report</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reports Section -->
+                    <div id="reports-section" class="hidden">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h2 class="text-lg font-medium text-gray-900 mb-4">Reports</h2>
+                            <p class="text-gray-500">Reports will be displayed here. Coming soon!</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Projects Section -->
+                    <div id="projects-section" class="hidden">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h2 class="text-lg font-medium text-gray-900">Projects</h2>
+                                <button onclick="openProjectModal()" class="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                    <i class="fas fa-plus mr-2"></i> Add Project
+                                </button>
+                            </div>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Color</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Time Tracked</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="projects-table-body" class="bg-white divide-y divide-gray-200">
+                                        <!-- Projects will be dynamically inserted here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tags Section -->
+                    <div id="tags-section" class="hidden">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <h2 class="text-lg font-medium text-gray-900">Tags</h2>
+                                <div class="relative">
+                                    <input type="text" id="new-tag-input" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Add new tag">
+                                    <button onclick="addNewTag()" class="ml-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="tags-list" class="flex flex-wrap gap-2">
+                                <!-- Tags will be dynamically inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data storage and state management
+        let timeEntries = JSON.parse(localStorage.getItem('timeEntries')) || [];
+        let projects = JSON.parse(localStorage.getItem('projects')) || [
+            { id: '1', name: 'Website Redesign', color: 'bg-green-500' },
+            { id: '2', name: 'Mobile App Development', color: 'bg-blue-500' },
+            { id: '3', name: 'Marketing Campaign', color: 'bg-purple-500' }
+        ];
+        let tags = JSON.parse(localStorage.getItem('tags')) || ['Development', 'Design', 'Meeting', 'Research'];
+        let timerInterval;
+        let seconds = 0;
+        let isRunning = false;
+        let currentEntryId = null;
+        let itemToDelete = null;
+        let itemToDeleteType = null;
+        let entryToEdit = null;
+        let projectToEdit = null;
+        let currentTags = [];
+        let currentSection = 'tracker';
+
+        // DOM elements
+        const timerDisplay = document.getElementById('timer-display');
+        const startButton = document.getElementById('start-timer');
+        const stopButton = document.getElementById('stop-timer');
+        const projectSelect = document.getElementById('project');
+        const descriptionInput = document.getElementById('description');
+        const tagsInput = document.getElementById('tags-input');
+        const tagsContainer = document.getElementById('tags-container');
+        const timeEntriesList = document.getElementById('time-entries-list');
+        const todayTotal = document.getElementById('today-total');
+        const todayTotalSummary = document.getElementById('today-total-summary');
+        const searchInput = document.getElementById('search-input');
+        const deleteModal = document.getElementById('delete-modal');
+        const deleteModalMessage = document.getElementById('delete-modal-message');
+        const editModal = document.getElementById('edit-modal');
+        const editProjectSelect = document.getElementById('edit-project');
+        const editDescriptionInput = document.getElementById('edit-description');
+        const editDurationInput = document.getElementById('edit-duration');
+        const editTagsContainer = document.getElementById('edit-tags-container');
+        const editTagsInput = document.getElementById('edit-tags-input');
+        const projectModal = document.getElementById('project-modal');
+        const projectModalTitle = document.getElementById('project-modal-title');
+        const projectNameInput = document.getElementById('project-name');
+        const projectColorSelect = document.getElementById('project-color');
+        const projectsTableBody = document.getElementById('projects-table-body');
+        const recentProjectsList = document.getElementById('recent-projects');
+        const newTagInput = document.getElementById('new-tag-input');
+        const tagsList = document.getElementById('tags-list');
+
+        // Initialize the app
+        function init() {
+            renderProjectsDropdown();
+            renderTimeEntries();
+            updateTodayTotal();
+            renderProjectsTable();
+            renderRecentProjects();
+            renderTags();
+            addEventListeners();
+            
+            // Set up tag input
+            tagsInput.addEventListener('keydown', handleTagInput);
+            editTagsInput.addEventListener('keydown', handleEditTagInput);
+        }
+
+        // Add event listeners
+        function addEventListeners() {
+            startButton.addEventListener('click', startTimer);
+            stopButton.addEventListener('click', stopTimer);
+            searchInput.addEventListener('input', handleSearch);
+        }
+
+        // Timer functions
+        function formatTime(totalSeconds) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            
+            return [
+                hours.toString().padStart(2, '0'),
+                minutes.toString().padStart(2, '0'),
+                seconds.toString().padStart(2, '0')
+            ].join(':');
+        }
+
+        function formatDuration(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins.toString().padStart(2, '0')}m`;
+        }
+
+        function startTimer() {
+            if (isRunning) return;
+            
+            const project = projectSelect.value;
+            const description = descriptionInput.value.trim();
+            
+            if (!project) {
+                alert('Please select a project');
+                return;
+            }
+            
+            if (!description) {
+                alert('Please enter a description');
+                return;
+            }
+            
+            isRunning = true;
+            startButton.disabled = true;
+            stopButton.disabled = false;
+            
+            // Create a new time entry
+            currentEntryId = Date.now().toString();
+            const startTime = new Date();
+            
+            timerInterval = setInterval(() => {
+                seconds++;
+                timerDisplay.textContent = formatTime(seconds);
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (!isRunning) return;
+            
+            clearInterval(timerInterval);
+            isRunning = false;
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            
+            const endTime = new Date();
+            const durationInMinutes = Math.floor(seconds / 60);
+            
+            // Create the time entry object
+            const timeEntry = {
+                id: currentEntryId,
+                project: projectSelect.value,
+                description: descriptionInput.value.trim(),
+                tags: [...currentTags],
+                duration: durationInMinutes,
+                date: new Date().toISOString().split('T')[0],
+                timestamp: Date.now()
+            };
+            
+            // Add to storage
+            timeEntries.unshift(timeEntry);
+            saveToLocalStorage();
+            
+            // Reset timer and form
+            seconds = 0;
+            timerDisplay.textContent = formatTime(seconds);
+            descriptionInput.value = '';
+            currentTags = [];
+            renderTagsInContainer(tagsContainer, tagsInput, currentTags);
+            
+            // Update UI
+            renderTimeEntries();
+            updateTodayTotal();
+            renderRecentProjects();
+        }
+
+        // CRUD operations
+        function saveToLocalStorage() {
+            localStorage.setItem('timeEntries', JSON.stringify(timeEntries));
+            localStorage.setItem('projects', JSON.stringify(projects));
+            localStorage.setItem('tags', JSON.stringify(tags));
+        }
+
+        function deleteItem() {
+            if (itemToDeleteType === 'timeEntry') {
+                timeEntries = timeEntries.filter(entry => entry.id !== itemToDelete);
+            } else if (itemToDeleteType === 'project') {
+                // Remove project from time entries
+                const project = projects.find(p => p.id === itemToDelete);
+                if (project) {
+                    timeEntries = timeEntries.filter(entry => entry.project !== project.name);
+                }
+                projects = projects.filter(project => project.id !== itemToDelete);
+            } else if (itemToDeleteType === 'tag') {
+                // Remove tag from time entries
+                timeEntries = timeEntries.map(entry => {
+                    if (entry.tags && entry.tags.includes(itemToDelete)) {
+                        entry.tags = entry.tags.filter(tag => tag !== itemToDelete);
+                    }
+                    return entry;
+                });
+                tags = tags.filter(tag => tag !== itemToDelete);
+            }
+            
+            saveToLocalStorage();
+            
+            if (itemToDeleteType === 'timeEntry') {
+                renderTimeEntries();
+                updateTodayTotal();
+            } else if (itemToDeleteType === 'project') {
+                renderProjectsDropdown();
+                renderProjectsTable();
+                renderRecentProjects();
+                renderTimeEntries();
+            } else if (itemToDeleteType === 'tag') {
+                renderTags();
+                renderTimeEntries();
+            }
+            
+            closeDeleteModal();
+        }
+
+        function editTimeEntry(id, updatedEntry) {
+            timeEntries = timeEntries.map(entry => 
+                entry.id === id ? { ...entry, ...updatedEntry } : entry
+            );
+            saveToLocalStorage();
+            renderTimeEntries();
+            updateTodayTotal();
+            closeEditModal();
+        }
+
+        function addProject(project) {
+            projects.push(project);
+            saveToLocalStorage();
+            renderProjectsDropdown();
+            renderProjectsTable();
+            renderRecentProjects();
+            closeProjectModal();
+        }
+
+        function updateProject(id, updatedProject) {
+            // Update project name in time entries
+            const oldProject = projects.find(p => p.id === id);
+            if (oldProject) {
+                timeEntries = timeEntries.map(entry => {
+                    if (entry.project === oldProject.name) {
+                        return { ...entry, project: updatedProject.name };
+                    }
+                    return entry;
+                });
+            }
+            
+            projects = projects.map(project => 
+                project.id === id ? { ...project, ...updatedProject } : project
+            );
+            saveToLocalStorage();
+            renderProjectsDropdown();
+            renderProjectsTable();
+            renderRecentProjects();
+            renderTimeEntries();
+            closeProjectModal();
+        }
+
+        function addTag(newTag) {
+            if (!tags.includes(newTag)) {
+                tags.push(newTag);
+                saveToLocalStorage();
+                renderTags();
+                newTagInput.value = '';
+            }
+        }
+
+        // Modal functions
+        function openDeleteModal(id, type) {
+            itemToDelete = id;
+            itemToDeleteType = type;
+            
+            if (type === 'timeEntry') {
+                deleteModalMessage.textContent = 'Are you sure you want to delete this time entry? This action cannot be undone.';
+            } else if (type === 'project') {
+                const project = projects.find(p => p.id === id);
+                deleteModalMessage.textContent = `Are you sure you want to delete the project "${project.name}"? All time entries associated with this project will also be deleted.`;
+            } else if (type === 'tag') {
+                deleteModalMessage.textContent = `Are you sure you want to delete the tag "${id}"? This tag will be removed from all time entries.`;
+            }
+            
+            deleteModal.classList.remove('opacity-0', 'pointer-events-none');
+            deleteModal.classList.add('opacity-100');
+        }
+
+        function closeDeleteModal() {
+            itemToDelete = null;
+            itemToDeleteType = null;
+            deleteModal.classList.remove('opacity-100');
+            deleteModal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function confirmDelete() {
+            deleteItem();
+        }
+
+        function openEditModal(id) {
+            entryToEdit = timeEntries.find(entry => entry.id === id);
+            if (entryToEdit) {
+                renderProjectsDropdown(editProjectSelect, entryToEdit.project);
+                editDescriptionInput.value = entryToEdit.description;
+                
+                // Set duration in HH:MM format
+                const hours = Math.floor(entryToEdit.duration / 60);
+                const minutes = entryToEdit.duration % 60;
+                editDurationInput.value = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                
+                // Set tags
+                const entryTags = entryToEdit.tags || [];
+                renderTagsInContainer(editTagsContainer, editTagsInput, entryTags);
+                
+                editModal.classList.remove('opacity-0', 'pointer-events-none');
+                editModal.classList.add('opacity-100');
+            }
+        }
+
+        function closeEditModal() {
+            entryToEdit = null;
+            editModal.classList.remove('opacity-100');
+            editModal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function saveEditedEntry() {
+            if (!entryToEdit) return;
+            
+            // Parse duration from HH:MM format
+            const [hours, minutes] = editDurationInput.value.split(':').map(Number);
+            if (isNaN(hours) || isNaN(minutes)) {
+                alert('Please enter duration in HH:MM format');
+                return;
+            }
+            
+            const durationInMinutes = hours * 60 + minutes;
+            
+            // Get tags from the edit container
+            const tagElements = editTagsContainer.querySelectorAll('.tag');
+            const updatedTags = Array.from(tagElements).map(el => el.dataset.tag);
+            
+            const updatedEntry = {
+                project: editProjectSelect.value,
+                description: editDescriptionInput.value.trim(),
+                tags: updatedTags,
+                duration: durationInMinutes
+            };
+            
+            editTimeEntry(entryToEdit.id, updatedEntry);
+        }
+
+        function openProjectModal(projectId = null) {
+            if (projectId) {
+                // Edit mode
+                projectToEdit = projects.find(p => p.id === projectId);
+                if (projectToEdit) {
+                    projectModalTitle.textContent = 'Edit Project';
+                    projectNameInput.value = projectToEdit.name;
+                    projectColorSelect.value = projectToEdit.color;
+                }
+            } else {
+                // Add mode
+                projectModalTitle.textContent = 'Add Project';
+                projectNameInput.value = '';
+                projectColorSelect.value = 'bg-green-500';
+                projectToEdit = null;
+            }
+            
+            projectModal.classList.remove('opacity-0', 'pointer-events-none');
+            projectModal.classList.add('opacity-100');
+        }
+
+        function closeProjectModal() {
+            projectToEdit = null;
+            projectModal.classList.remove('opacity-100');
+            projectModal.classList.add('opacity-0', 'pointer-events-none');
+        }
+
+        function saveProject() {
+            const name = projectNameInput.value.trim();
+            const color = projectColorSelect.value;
+            
+            if (!name) {
+                alert('Please enter a project name');
+                return;
+            }
+            
+            if (projectToEdit) {
+                // Update existing project
+                updateProject(projectToEdit.id, { name, color });
+            } else {
+                // Add new project
+                const newProject = {
+                    id: Date.now().toString(),
+                    name,
+                    color
+                };
+                addProject(newProject);
+            }
+        }
+
+        // Tag functions
+        function handleTagInput(e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const tag = tagsInput.value.trim();
+                if (tag && !currentTags.includes(tag)) {
+                    currentTags.push(tag);
+                    renderTagsInContainer(tagsContainer, tagsInput, currentTags);
+                }
+                tagsInput.value = '';
+            } else if (e.key === 'Backspace' && tagsInput.value === '' && currentTags.length > 0) {
+                // Remove last tag when backspace is pressed on empty input
+                currentTags.pop();
+                renderTagsInContainer(tagsContainer, tagsInput, currentTags);
+            }
+        }
+
+        function handleEditTagInput(e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const tag = editTagsInput.value.trim();
+                const tagElements = editTagsContainer.querySelectorAll('.tag');
+                const existingTags = Array.from(tagElements).map(el => el.dataset.tag);
+                
+                if (tag && !existingTags.includes(tag)) {
+                    addTagToContainer(editTagsContainer, editTagsInput, tag);
+                }
+                editTagsInput.value = '';
+            } else if (e.key === 'Backspace' && editTagsInput.value === '') {
+                // Remove last tag when backspace is pressed on empty input
+                const tagElements = editTagsContainer.querySelectorAll('.tag');
+                if (tagElements.length > 0) {
+                    tagElements[tagElements.length - 1].remove();
+                }
+            }
+        }
+
+        function renderTagsInContainer(container, inputElement, tagsArray) {
+            // Clear existing tags
+            const existingTags = container.querySelectorAll('.tag');
+            existingTags.forEach(tag => tag.remove());
+            
+            // Add current tags
+            tagsArray.forEach(tag => {
+                addTagToContainer(container, inputElement, tag);
+            });
+        }
+
+        function addTagToContainer(container, inputElement, tag) {
+            const tagElement = document.createElement('div');
+            tagElement.className = 'tag bg-gray-100 text-gray-800';
+            tagElement.dataset.tag = tag;
+            
+            tagElement.innerHTML = `
+                ${tag}
+                <span class="tag-remove" onclick="removeTagFromContainer(this.parentElement, '${tag}')">
+                    <i class="fas fa-times"></i>
+                </span>
+            `;
+            
+            container.insertBefore(tagElement, inputElement);
+        }
+
+        function removeTagFromContainer(tagElement, tag) {
+            tagElement.remove();
+            
+            // If this is the main tags input, update currentTags
+            if (tagElement.parentElement === tagsContainer) {
+                currentTags = currentTags.filter(t => t !== tag);
+            }
+        }
+
+        function addNewTag() {
+            const newTag = newTagInput.value.trim();
+            if (newTag) {
+                addTag(newTag);
+            }
+        }
+
+        // UI rendering
+        function renderProjectsDropdown(selectElement = projectSelect, selectedProject = '') {
+            selectElement.innerHTML = '<option value="">Select project</option>';
+            
+            projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.name;
+                option.textContent = project.name;
+                option.selected = project.name === selectedProject;
+                selectElement.appendChild(option);
+            });
+        }
+
+        function renderTimeEntries(filter = '') {
+            const today = new Date().toISOString().split('T')[0];
+            let filteredEntries = timeEntries.filter(entry => entry.date === today);
+            
+            if (filter) {
+                const searchTerm = filter.toLowerCase();
+                filteredEntries = filteredEntries.filter(entry => 
+                    entry.project.toLowerCase().includes(searchTerm) || 
+                    entry.description.toLowerCase().includes(searchTerm) ||
+                    (entry.tags && entry.tags.some(tag => tag.toLowerCase().includes(searchTerm)))
+                );
+            }
+            
+            if (filteredEntries.length === 0) {
+                timeEntriesList.innerHTML = `
+                    <div class="px-6 py-8 text-center">
+                        <i class="fas fa-clock text-gray-300 text-4xl mb-2"></i>
+                        <p class="text-gray-500">No time entries for today</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            timeEntriesList.innerHTML = filteredEntries.map(entry => {
+                const project = projects.find(p => p.name === entry.project);
+                const projectColor = project ? project.color : 'bg-gray-500';
+                
+                // Render tags if they exist
+                const tagsHtml = entry.tags && entry.tags.length > 0 
+                    ? `<div class="ml-6 mt-1 flex flex-wrap gap-1">${entry.tags.map(tag => 
+                        `<span class="tag ${getRandomTagColor()} text-xs">${tag}</span>`
+                    ).join('')}</div>` 
+                    : '';
+                
+                return `
+                    <div class="px-6 py-4 project-item">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="flex items-center">
+                                    <span class="w-3 h-3 ${projectColor} rounded-full mr-3"></span>
+                                    <span class="text-sm font-medium text-gray-900">${entry.project}</span>
+                                </div>
+                                <p class="ml-6 text-sm text-gray-500">${entry.description}</p>
+                                ${tagsHtml}
+                            </div>
+                            <div class="flex items-center">
+                                <span class="text-sm font-medium text-gray-900">${formatDuration(entry.duration)}</span>
+                                <div class="project-actions ml-4 opacity-0 transition-opacity duration-200">
+                                    <button onclick="openEditModal('${entry.id}')" class="text-gray-400 hover:text-gray-500">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    <button onclick="openDeleteModal('${entry.id}', 'timeEntry')" class="ml-2 text-gray-400 hover:text-gray-500">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderProjectsTable() {
+            if (projects.length === 0) {
+                projectsTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-gray-500">
+                            No projects found. Add your first project!
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            projectsTableBody.innerHTML = projects.map(project => {
+                // Calculate total time for this project
+                const projectEntries = timeEntries.filter(entry => entry.project === project.name);
+                const totalMinutes = projectEntries.reduce((sum, entry) => sum + entry.duration, 0);
+                
+                return `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <span class="w-3 h-3 ${project.color} rounded-full mr-3"></span>
+                                <span class="text-sm font-medium text-gray-900">${project.name}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 py-1 text-xs font-medium rounded-full ${project.color.replace('bg-', 'text-')} ${project.color.replace('bg-', 'bg-')} bg-opacity-20">
+                                ${project.color.replace('bg-', '').replace('-500', '')}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            ${formatDuration(totalMinutes)}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button onclick="openProjectModal('${project.id}')" class="text-indigo-600 hover:text-indigo-900 mr-3">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button onclick="openDeleteModal('${project.id}', 'project')" class="text-red-600 hover:text-red-900">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderRecentProjects() {
+            // Get top 3 projects by time spent today
+            const today = new Date().toISOString().split('T')[0];
+            const todayEntries = timeEntries.filter(entry => entry.date === today);
+            
+            const projectTimes = {};
+            todayEntries.forEach(entry => {
+                if (!projectTimes[entry.project]) {
+                    projectTimes[entry.project] = 0;
+                }
+                projectTimes[entry.project] += entry.duration;
+            });
+            
+            const sortedProjects = Object.entries(projectTimes)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([name]) => name);
+            
+            // Fill with other projects if needed
+            while (sortedProjects.length < 3 && projects.length > sortedProjects.length) {
+                const remainingProjects = projects.filter(p => !sortedProjects.includes(p.name));
+                if (remainingProjects.length > 0) {
+                    sortedProjects.push(remainingProjects[0].name);
+                } else {
+                    break;
+                }
+            }
+            
+            recentProjectsList.innerHTML = sortedProjects.map(projectName => {
+                const project = projects.find(p => p.name === projectName);
+                if (!project) return '';
+                
+                return `
+                    <a href="#" onclick="document.getElementById('project').value='${project.name}'; return false;" class="flex items-center px-3 py-2 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-100">
+                        <span class="w-3 h-3 ${project.color} rounded-full mr-3"></span>
+                        ${project.name}
+                    </a>
+                `;
+            }).join('');
+            
+            // If no projects, show message
+            if (sortedProjects.length === 0 && projects.length > 0) {
+                recentProjectsList.innerHTML = `
+                    <div class="px-3 py-2 text-sm text-gray-500">
+                        No time tracked today
+                    </div>
+                `;
+            }
+        }
+
+        function renderTags() {
+            if (tags.length === 0) {
+                tagsList.innerHTML = '<p class="text-gray-500">No tags yet. Add your first tag!</p>';
+                return;
+            }
+            
+            tagsList.innerHTML = tags.map(tag => `
+                <div class="flex items-center bg-white rounded-full shadow px-3 py-1">
+                    <span class="text-sm font-medium text-gray-700 mr-2">${tag}</span>
+                    <button onclick="openDeleteModal('${tag}', 'tag')" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function getRandomTagColor() {
+            const colors = [
+                'bg-blue-100 text-blue-800',
+                'bg-green-100 text-green-800',
+                'bg-yellow-100 text-yellow-800',
+                'bg-red-100 text-red-800',
+                'bg-purple-100 text-purple-800',
+                'bg-pink-100 text-pink-800',
+                'bg-indigo-100 text-indigo-800'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        function updateTodayTotal() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayEntries = timeEntries.filter(entry => entry.date === today);
+            const totalMinutes = todayEntries.reduce((sum, entry) => sum + entry.duration, 0);
+            
+            const hours = Math.floor(totalMinutes / 60);
+            const minutes = totalMinutes % 60;
+            
+            todayTotal.textContent = `Today: ${hours}h ${minutes.toString().padStart(2, '0')}m`;
+            todayTotalSummary.textContent = `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+        }
+
+        // Section navigation
+        function showSection(section) {
+            // Hide all sections
+            document.getElementById('tracker-section').classList.add('hidden');
+            document.getElementById('reports-section').classList.add('hidden');
+            document.getElementById('projects-section').classList.add('hidden');
+            document.getElementById('tags-section').classList.add('hidden');
+            
+            // Remove active class from all sidebar items
+            document.getElementById('tracker-link').classList.remove('active');
+            document.getElementById('reports-link').classList.remove('active');
+            document.getElementById('projects-link').classList.remove('active');
+            document.getElementById('tags-link').classList.remove('active');
+            
+            // Show selected section
+            document.getElementById(`${section}-section`).classList.remove('hidden');
+            document.getElementById(`${section}-link`).classList.add('active');
+            
+            currentSection = section;
+        }
+
+        // Search functionality
+        function handleSearch(e) {
+            if (currentSection === 'tracker') {
+                renderTimeEntries(e.target.value);
+            }
+            // Add search for other sections as needed
+        }
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
